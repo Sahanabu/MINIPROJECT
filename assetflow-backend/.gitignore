@@ -1,0 +1,41 @@
+# Node
+node_modules/
+.npm/
+
+# Env
+.env
+.env.*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage
+
+# Build
+.dist
+build
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+
+# Temp
+.tmp/
+.cache/
