@@ -45,3 +45,13 @@ AssetSchema.pre('validate', function (next) {
 });
 
 export const Asset = mongoose.model('Asset', AssetSchema);
+
+// Separate collections for isolation
+export const CapitalAsset = mongoose.model('CapitalAsset', AssetSchema, 'capital_assets');
+export const RevenueAsset = mongoose.model('RevenueAsset', AssetSchema, 'revenue_assets');
+
+export function getAssetModelByType(type) {
+	if (type === 'capital') return CapitalAsset;
+	if (type === 'revenue') return RevenueAsset;
+	throw new Error('Invalid asset type');
+}

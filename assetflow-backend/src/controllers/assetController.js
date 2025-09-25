@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Asset } from '../models/Asset.js';
+import { Asset, getAssetModelByType } from '../models/Asset.js';
 import { Department } from '../models/Department.js';
 import { assetCreateSchema, assetUpdateSchema, listQuerySchema } from '../validation/schemas.js';
 import { persistFile } from '../utils/storage.js';
@@ -72,7 +72,8 @@ export async function createAsset(req, res, next) {
 		}));
 
 		const totals = computeTotals({ ...value, items });
-		const doc = await Asset.create({ ...value, items: totals.items, grandTotal: totals.grandTotal });
+		const Model = getAssetModelByType(value.type);
+		const doc = await Model.create({ ...value, items: totals.items, grandTotal: totals.grandTotal });
 		res.status(201).json({ id: doc._id });
 	} catch (err) {
 		next(err);
@@ -99,9 +100,10 @@ export async function listAssets(req, res, next) {
 			];
 		}
 		const skip = (page - 1) * limit;
+		const Model = filters.type ? getAssetModelByType(filters.type) : Asset;
 		const [items, total] = await Promise.all([
-			Asset.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
-			Asset.countDocuments(query),
+			Model.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+			Model.countDocuments(query),
 		]);
 		res.json({ data: items, page, limit, total, totalPages: Math.ceil(total / limit) });
 	} catch (err) {
@@ -111,7 +113,10 @@ export async function listAssets(req, res, next) {
 
 export async function getAsset(req, res, next) {
 	try {
-		const doc = await Asset.findById(req.params.id);
+		let doc = await Asset.findById(req.params.id);
+		if (!doc) {
+			doc = await getAssetModelByType('capital').findById(req.params.id) || await getAssetModelByType('revenue').findById(req.params.id);
+		}
 		if (!doc) return res.status(404).json({ error: 'Asset not found' });
 		res.json({ data: doc });
 	} catch (err) {
@@ -131,7 +136,8 @@ export async function updateAsset(req, res, next) {
 			data.items = totals.items;
 			data.grandTotal = totals.grandTotal;
 		}
-		const updated = await Asset.findByIdAndUpdate(id, data, { new: true });
+		const Model = data.type ? getAssetModelByType(data.type) : Asset;
+		const updated = await Model.findByIdAndUpdate(id, data, { new: true });
 		if (!updated) return res.status(404).json({ error: 'Asset not found' });
 		res.json({ data: updated });
 	} catch (err) {
@@ -142,9 +148,31 @@ export async function updateAsset(req, res, next) {
 export async function deleteAsset(req, res, next) {
 	try {
 		const { id } = req.params;
-		const deleted = await Asset.findByIdAndDelete(id);
+		let deleted = await Asset.findByIdAndDelete(id);
+		if (!deleted) {
+			deleted = await getAssetModelByType('capital').findByIdAndDelete(id) || await getAssetModelByType('revenue').findByIdAndDelete(id);
+		}
 		if (!deleted) return res.status(404).json({ error: 'Asset not found' });
 		res.json({ success: true });
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getAssetsSummary(_req, res, next) {
+	try {
+		const [capitalCount, capitalSum, revenueCount, revenueSum, legacyCount, legacySum] = await Promise.all([
+			getAssetModelByType('capital').countDocuments({}),
+			getAssetModelByType('capital').aggregate([{ $group: { _id: null, total: { $sum: '$grandTotal' } } }]),
+			getAssetModelByType('revenue').countDocuments({}),
+			getAssetModelByType('revenue').aggregate([{ $group: { _id: null, total: { $sum: '$grandTotal' } } }]),
+			Asset.countDocuments({}),
+			Asset.aggregate([{ $group: { _id: null, total: { $sum: '$grandTotal' } } }]),
+		]);
+		const toNumber = (arr) => (arr && arr[0] ? arr[0].total : 0);
+		const totalAssets = capitalCount + revenueCount + legacyCount;
+		const totalValue = toNumber(capitalSum) + toNumber(revenueSum) + toNumber(legacySum);
+		res.json({ data: { totalAssets, totalValue, byType: { capital: { count: capitalCount, value: toNumber(capitalSum) }, revenue: { count: revenueCount, value: toNumber(revenueSum) } } } });
 	} catch (err) {
 		next(err);
 	}
