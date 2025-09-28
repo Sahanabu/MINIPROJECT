@@ -61,3 +61,15 @@ export const reportQuerySchema = Joi.object({
 	groupBy: Joi.string().valid('department', 'item', 'vendor').required(),
 	format: Joi.string().valid('excel', 'word'),
 });
+
+export const registerSchema = Joi.object({
+	name: Joi.string().trim().min(2).max(50).required(),
+	email: Joi.string().email({ tlds: false }).required(),
+	password: Joi.string().min(6).required(),
+	role: Joi.string().valid('officer', 'admin').default('officer'),
+});
+
+export const loginSchema = Joi.object({
+	email: Joi.string().email({ tlds: false }).required(),
+	password: Joi.string().required(),
+});

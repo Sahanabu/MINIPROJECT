@@ -1,14 +1,14 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '../../services/api';
 
-export interface ReportItem {
+export interface ReportGroup {
   groupKey: string;
   items: any[];
   subtotal: number;
 }
 
 export interface ReportData {
-  data: ReportItem[];
+  data: ReportGroup[];
   grandTotal: number;
 }
 
@@ -21,7 +21,7 @@ interface ReportsState {
     departmentId?: string;
     itemName?: string;
     vendorName?: string;
-    groupBy?: 'department' | 'item' | 'vendor';
+    groupBy: 'department' | 'item' | 'vendor';
   };
 }
 
@@ -29,50 +29,27 @@ const initialState: ReportsState = {
   reportData: null,
   loading: false,
   error: null,
-  filters: {},
+  filters: {
+    groupBy: 'department',
+  },
 };
 
-// Async thunks
 export const generateReport = createAsyncThunk(
   'reports/generateReport',
-  async (params: {
-    academicYear?: string;
-    departmentId?: string;
-    itemName?: string;
-    vendorName?: string;
-    groupBy?: 'department' | 'item' | 'vendor';
-  }) => {
-    const response = await api.get('/reports', { params });
+  async (filters: ReportsState['filters']) => {
+    const response = await api.get('/reports', { params: filters });
     return response.data;
   }
 );
 
 export const exportReport = createAsyncThunk(
   'reports/exportReport',
-  async (params: {
-    format: 'excel' | 'word';
-    academicYear?: string;
-    departmentId?: string;
-    itemName?: string;
-    vendorName?: string;
-    groupBy?: 'department' | 'item' | 'vendor';
-  }) => {
-    const response = await api.get('/reports/export', {
-      params,
+  async ({ format, filters }: { format: 'excel' | 'word'; filters: ReportsState['filters'] }) => {
+    const response = await api.get(`/reports/export/${format}`, {
+      params: filters,
       responseType: 'blob',
     });
-    
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `report.${params.format === 'excel' ? 'xlsx' : 'docx'}`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    
-    return response.data;
+    return { blob: response.data, format };
   }
 );
 
@@ -80,16 +57,15 @@ const reportsSlice = createSlice({
   name: 'reports',
   initialState,
   reducers: {
-    setFilters: (state, action) => {
+    setFilters: (state, action: PayloadAction<Partial<ReportsState['filters']>>) => {
       state.filters = { ...state.filters, ...action.payload };
     },
     clearFilters: (state) => {
-      state.filters = {};
+      state.filters = { groupBy: 'department' };
     },
   },
   extraReducers: (builder) => {
     builder
-      // Generate report
       .addCase(generateReport.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -102,13 +78,21 @@ const reportsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to generate report';
       })
-      
-      // Export report
       .addCase(exportReport.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
-      .addCase(exportReport.fulfilled, (state) => {
+      .addCase(exportReport.fulfilled, (state, action) => {
         state.loading = false;
+        const { blob, format } = action.payload;
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `asset-report.${format === 'excel' ? 'xlsx' : 'docx'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
       })
       .addCase(exportReport.rejected, (state, action) => {
         state.loading = false;

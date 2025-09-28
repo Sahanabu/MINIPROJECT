@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import session from 'express-session';
+import passport from './config/passport.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config/index.js';
@@ -43,6 +45,22 @@ export function createApp() {
 	// Body parsers
 	app.use(express.json({ limit: '5mb' }));
 	app.use(express.urlencoded({ extended: true }));
+
+	// Session middleware for Passport
+	app.use(session({
+		secret: process.env.SESSION_SECRET || 'your-session-secret',
+		resave: false,
+		saveUninitialized: false,
+		cookie: {
+			secure: config.nodeEnv === 'production',
+			httpOnly: true,
+			maxAge: 24 * 60 * 60 * 1000 // 24 hours
+		}
+	}));
+
+	// Initialize Passport
+	app.use(passport.initialize());
+	app.use(passport.session());
 
 	// Static files for uploaded content (local mode)
 	app.use('/uploads', express.static(config.uploadDir));

@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, X } from 'lucide-react';
+import { Upload, File, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface FileUploaderProps {
@@ -19,6 +20,8 @@ const FileUploader = ({
   selectedFile,
   className,
 }: FileUploaderProps) => {
+  const [showPreview, setShowPreview] = useState(false);
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -51,6 +54,8 @@ const FileUploader = ({
     e.stopPropagation();
     onFileSelect(null);
   };
+
+  const isImage = selectedFile && selectedFile.type.startsWith('image/');
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -90,15 +95,43 @@ const FileUploader = ({
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleRemoveFile}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-1">
+            {isImage && (
+              <Dialog open={showPreview} onOpenChange={setShowPreview}>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>File Preview</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex justify-center">
+                    <img
+                      src={URL.createObjectURL(selectedFile)}
+                      alt="Preview"
+                      className="max-w-full max-h-96 object-contain"
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveFile}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 

@@ -12,7 +12,7 @@ const AssetItemSchema = new mongoose.Schema(
 		email: { type: String, default: '' },
 		billNo: { type: String, default: '' },
 		billDate: { type: Date },
-		billFileUrl: { type: String, default: '' },
+		billFileId: { type: mongoose.Schema.Types.ObjectId, ref: 'Upload', default: null },
 	},
 	{ _id: false }
 );

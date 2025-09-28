@@ -5,7 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useDispatch, useSelector } from 'react-redux';
 import { format } from 'date-fns';
-import { Plus, Trash2, Eye, Calendar } from 'lucide-react';
+import { Plus, Trash2, Eye, Calendar, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 
 import { RootState, AppDispatch } from '../store';
 import { fetchDepartments } from '../store/slices/departmentsSlice';
-import { createAsset, AssetItem } from '../store/slices/assetsSlice';
+import { createAsset, updateAsset, getAsset, AssetItem } from '../store/slices/assetsSlice';
 import { useToast } from '../hooks/use-toast';
 import FileUploader from '../components/FileUploader';
 
@@ -44,6 +44,8 @@ const itemSchema = yup.object({
   billNo: yup.string().required('Bill number is required'),
   billDate: yup.date().required('Bill date is required'),
   billFile: yup.mixed(),
+  billFileId: yup.string(),
+  billFileName: yup.string(),
 });
 
 const assetSchema = yup.object({
@@ -53,16 +55,18 @@ const assetSchema = yup.object({
 });
 
 const AssetForm = () => {
-  const { type } = useParams<{ type: 'capital' | 'revenue' }>();
+  const { type, id } = useParams<{ type: 'capital' | 'revenue'; id?: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { toast } = useToast();
-  
+
+  const isEdit = !!id;
   const [step, setStep] = useState(1);
   const [showPreview, setShowPreview] = useState(false);
-  
+
   const { departments, loading: departmentsLoading } = useSelector((state: RootState) => state.departments);
   const { loading: assetLoading } = useSelector((state: RootState) => state.assets);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const form = useForm({
     resolver: yupResolver(assetSchema),
@@ -81,11 +85,13 @@ const AssetForm = () => {
         billNo: '',
         billDate: new Date(),
         billFile: undefined,
+        billFileId: '',
+        billFileName: '',
       }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -107,6 +113,35 @@ const AssetForm = () => {
     dispatch(fetchDepartments());
   }, [dispatch]);
 
+  // Fetch asset data for edit mode
+  useEffect(() => {
+    if (isEdit && id) {
+      const fetchAsset = async () => {
+        try {
+          const result = await dispatch(getAsset(id)).unwrap();
+          const asset = result.data;
+          form.reset({
+            departmentId: asset.departmentId,
+            subcategory: asset.subcategory,
+            items: asset.items.map(item => ({
+              ...item,
+              billDate: new Date(item.billDate),
+              billFile: undefined, // Reset file input
+            })),
+          });
+        } catch (error) {
+          toast({
+            title: 'Error',
+            description: 'Failed to load asset data',
+            variant: 'destructive',
+          });
+          navigate('/assets');
+        }
+      };
+      fetchAsset();
+    }
+  }, [isEdit, id, dispatch, form, toast, navigate]);
+
   const grandTotal = watchedItems.reduce((sum, item) => sum + item.totalAmount, 0);
 
   const handleAddItem = () => {
@@ -122,6 +157,8 @@ const AssetForm = () => {
       billNo: '',
       billDate: new Date(),
       billFile: undefined,
+      billFileId: '',
+      billFileName: '',
     });
   };
 
@@ -134,24 +171,32 @@ const AssetForm = () => {
       subcategory: data.subcategory,
       academicYear: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1).toString().slice(-2),
       officer: {
-        id: 'current-user-id', // TODO: Get from auth context
-        name: 'Current User', // TODO: Get from auth context
+        id: user?._id || '',
+        name: user?.name || '',
       },
       items: data.items,
       grandTotal,
     };
 
     try {
-      await dispatch(createAsset(assetData)).unwrap();
-      toast({
-        title: 'Success',
-        description: 'Asset created successfully',
-      });
+      if (isEdit && id) {
+        await dispatch(updateAsset({ id, assetData })).unwrap();
+        toast({
+          title: 'Success',
+          description: 'Asset updated successfully',
+        });
+      } else {
+        await dispatch(createAsset(assetData)).unwrap();
+        toast({
+          title: 'Success',
+          description: 'Asset created successfully',
+        });
+      }
       navigate('/assets?type=' + type);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create asset',
+        description: `Failed to ${isEdit ? 'update' : 'create'} asset`,
         variant: 'destructive',
       });
     }
@@ -177,15 +222,15 @@ const AssetForm = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            Add {type === 'capital' ? 'Capital' : 'Revenue'} Asset
+            {isEdit ? 'Edit' : 'Add'} {type === 'capital' ? 'Capital' : 'Revenue'} Asset
           </h1>
           <p className="text-muted-foreground">
-            Fill in the details to add a new {type} asset to the system
+            {isEdit ? 'Update the details of the' : 'Fill in the details to add a new'} {type} asset to the system
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/')}
+        <Button
+          variant="outline"
+          onClick={() => navigate('/assets?type=' + type)}
         >
           Cancel
         </Button>
@@ -330,7 +375,7 @@ const AssetForm = () => {
           {step === 3 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Step 3: Add Items</h2>
+                <h2 className="text-xl font-semibold">Step 3: {isEdit ? 'Edit' : 'Add'} Items</h2>
                 <div className="flex gap-2">
                   <Dialog open={showPreview} onOpenChange={setShowPreview}>
                     <DialogTrigger asChild>
@@ -356,7 +401,7 @@ const AssetForm = () => {
                             <p className="font-medium">{form.getValues('subcategory')}</p>
                           </div>
                         </div>
-                        
+
                         <div>
                           <h4 className="font-medium mb-2">Items ({watchedItems.length})</h4>
                           <div className="space-y-2">
@@ -442,7 +487,12 @@ const AssetForm = () => {
                                   type="number"
                                   min="1"
                                   {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 0;
+                                    field.onChange(value);
+                                    const price = form.getValues(`items.${index}.pricePerItem`) || 0;
+                                    form.setValue(`items.${index}.totalAmount`, value * price);
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -461,7 +511,12 @@ const AssetForm = () => {
                                   min="0"
                                   step="0.01"
                                   {...field}
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value) || 0;
+                                    field.onChange(value);
+                                    const quantity = form.getValues(`items.${index}.quantity`) || 0;
+                                    form.setValue(`items.${index}.totalAmount`, quantity * value);
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -599,13 +654,43 @@ const AssetForm = () => {
                         name={`items.${index}.billFile`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Bill File</FormLabel>
+                            <FormLabel>Bill File {isEdit && watchedItems[index]?.billFileId ? '(Optional - replace existing)' : '*'}</FormLabel>
                             <FormControl>
-                              <FileUploader
-                                onFileSelect={(file) => field.onChange(file)}
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                maxSize={5 * 1024 * 1024} // 5MB
-                              />
+                              <div className="space-y-2">
+                                {isEdit && watchedItems[index]?.billFileId && (
+                                  <div className="flex items-center gap-2 p-2 border rounded">
+                                    <span className="text-sm">Current file: {watchedItems[index].billFileName}</span>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => window.open(`/api/assets/${id}/file/${index}`, '_blank')}
+                                    >
+                                      <Eye className="mr-2 h-3 w-3" />
+                                      View
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = `/api/assets/${id}/file/${index}?download=true`;
+                                        link.download = watchedItems[index].billFileName || 'bill.pdf';
+                                        link.click();
+                                      }}
+                                    >
+                                      <Download className="mr-2 h-3 w-3" />
+                                      Download
+                                    </Button>
+                                  </div>
+                                )}
+                                <FileUploader
+                                  onFileSelect={(file) => field.onChange(file)}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  maxSize={5 * 1024 * 1024} // 5MB
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -636,7 +721,7 @@ const AssetForm = () => {
                         disabled={assetLoading}
                         className="bg-primary hover:bg-primary-hover"
                       >
-                        {assetLoading ? 'Creating...' : 'Create Asset'}
+                        {assetLoading ? (isEdit ? 'Updating...' : 'Creating...') : (isEdit ? 'Update Asset' : 'Create Asset')}
                       </Button>
                     </div>
                   </div>

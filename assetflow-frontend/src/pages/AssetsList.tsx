@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { format } from 'date-fns';
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
   Download,
   Plus,
   ChevronLeft,
@@ -40,23 +40,24 @@ const AssetsList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
   const { toast } = useToast();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAsset, setSelectedAsset] = useState(null);
-  
+
   const type = searchParams.get('type') as 'capital' | 'revenue' || 'capital';
-  
+  const navigate = useNavigate();
+
   const { assets, loading, pagination, filters } = useSelector((state: RootState) => state.assets);
   const { departments } = useSelector((state: RootState) => state.departments);
 
   // Fetch data on mount and when filters change
   useEffect(() => {
     dispatch(fetchDepartments());
-    dispatch(fetchAssets({ 
-      type, 
+    dispatch(fetchAssets({
+      type,
       page: pagination.page,
       limit: pagination.limit,
-      ...filters 
+      ...filters
     }));
   }, [dispatch, type, pagination.page, pagination.limit, filters]);
 
@@ -93,7 +94,7 @@ const AssetsList = () => {
 
   const filteredAssets = assets.filter(asset =>
     searchTerm === '' ||
-    asset.items.some(item => 
+    asset.items.some(item =>
       item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.vendorName.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -138,9 +139,9 @@ const AssetsList = () => {
                 className="pl-10"
               />
             </div>
-            
-            <Select 
-              value={filters.departmentId || 'all'} 
+
+            <Select
+              value={filters.departmentId || 'all'}
               onValueChange={(value) => handleFilterChange('departmentId', value === 'all' ? '' : value)}
             >
               <SelectTrigger>
@@ -156,8 +157,8 @@ const AssetsList = () => {
               </SelectContent>
             </Select>
 
-            <Select 
-              value={filters.subcategory || 'all'} 
+            <Select
+              value={filters.subcategory || 'all'}
               onValueChange={(value) => handleFilterChange('subcategory', value === 'all' ? '' : value)}
             >
               <SelectTrigger>
@@ -218,8 +219,8 @@ const AssetsList = () => {
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-muted-foreground">
                           No assets found. Try adjusting your filters or{' '}
-                          <Link 
-                            to={`/asset/${type}`} 
+                          <Link
+                            to={`/asset/${type}`}
                             className="text-primary hover:underline"
                           >
                             add a new asset
@@ -261,8 +262,8 @@ const AssetsList = () => {
                           <div className="flex items-center justify-end gap-2">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
+                                <Button
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => setSelectedAsset(asset)}
                                 >
@@ -293,7 +294,7 @@ const AssetsList = () => {
                                         <p className="font-medium">{selectedAsset.officer.name}</p>
                                       </div>
                                     </div>
-                                    
+
                                     <div>
                                       <h4 className="font-medium mb-4">Items ({selectedAsset.items.length})</h4>
                                       <div className="space-y-4">
@@ -322,16 +323,30 @@ const AssetsList = () => {
                                                   <p className="text-sm">
                                                     <span className="text-muted-foreground">Date:</span> {format(new Date(item.billDate), 'MMM dd, yyyy')}
                                                   </p>
-                                                  {item.billFileUrl && (
-                                                    <Button
-                                                      variant="outline"
-                                                      size="sm"
-                                                      className="mt-2"
-                                                      onClick={() => window.open(item.billFileUrl, '_blank')}
-                                                    >
-                                                      <Download className="mr-2 h-3 w-3" />
-                                                      View Bill
-                                                    </Button>
+                                                  {item.billFileId && (
+                                                    <div className="flex gap-2 mt-2">
+                                                      <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => window.open(`/api/assets/${selectedAsset._id}/file/${index}`, '_blank')}
+                                                      >
+                                                        <Eye className="mr-2 h-3 w-3" />
+                                                        View Bill
+                                                      </Button>
+                                                      <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                          const link = document.createElement('a');
+                                                          link.href = `/api/assets/${selectedAsset._id}/file/${index}?download=true`;
+                                                          link.download = item.billFileName || `${item.billNo || 'bill'}.pdf`;
+                                                          link.click();
+                                                        }}
+                                                      >
+                                                        <Download className="mr-2 h-3 w-3" />
+                                                        Download Bill
+                                                      </Button>
+                                                    </div>
                                                   )}
                                                 </div>
                                               </div>
@@ -349,13 +364,17 @@ const AssetsList = () => {
                                 )}
                               </DialogContent>
                             </Dialog>
-                            
-                            <Button variant="ghost" size="sm">
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/asset/${type}/edit/${asset._id}`)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            
-                            <Button 
-                              variant="ghost" 
+
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(asset._id!)}
                               className="text-destructive hover:text-destructive"

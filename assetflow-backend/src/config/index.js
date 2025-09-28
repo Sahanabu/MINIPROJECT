@@ -11,6 +11,7 @@ if (fs.existsSync(envPath)) {
 export const config = {
 	port: parseInt(process.env.PORT || '4000', 10),
 	nodeEnv: process.env.NODE_ENV || 'development',
+	baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || '4000'}`,
 	mongoUri: process.env.MONGO_URI || '',
 	allowedOrigins: (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 	uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), 'uploads'),

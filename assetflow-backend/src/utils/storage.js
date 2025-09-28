@@ -36,7 +36,7 @@ export async function saveBufferLocal(buffer, originalName, subdir = '') {
 	await fs.promises.writeFile(filePath, buffer);
 	// Public URL under /uploads
 	const relPath = path.relative(config.uploadDir, filePath).replace(/\\/g, '/');
-	return `/uploads/${relPath}`;
+	return `${config.baseUrl}/uploads/${relPath}`;
 }
 
 export async function uploadBufferS3(buffer, originalName, subdir = '') {
