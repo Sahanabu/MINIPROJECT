@@ -10,12 +10,14 @@ export interface Department {
 interface DepartmentsState {
   departments: Department[];
   loading: boolean;
+  actionLoading: boolean;
   error: string | null;
 }
 
 const initialState: DepartmentsState = {
   departments: [],
   loading: false,
+  actionLoading: false,
   error: null,
 };
 
@@ -73,21 +75,48 @@ const departmentsSlice = createSlice({
       })
       
       // Create department
+      .addCase(createDepartment.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(createDepartment.fulfilled, (state, action) => {
+        state.actionLoading = false;
         state.departments.push(action.payload.data);
       })
-      
+      .addCase(createDepartment.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.error.message || 'Failed to create department';
+      })
+
       // Update department
+      .addCase(updateDepartment.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(updateDepartment.fulfilled, (state, action) => {
+        state.actionLoading = false;
         const index = state.departments.findIndex(dept => dept._id === action.payload.data._id);
         if (index !== -1) {
           state.departments[index] = action.payload.data;
         }
       })
-      
+      .addCase(updateDepartment.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.error.message || 'Failed to update department';
+      })
+
       // Delete department
+      .addCase(deleteDepartment.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(deleteDepartment.fulfilled, (state, action) => {
+        state.actionLoading = false;
         state.departments = state.departments.filter(dept => dept._id !== action.payload);
+      })
+      .addCase(deleteDepartment.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.error.message || 'Failed to delete department';
       });
   },
 });

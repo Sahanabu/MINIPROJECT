@@ -65,7 +65,7 @@ const AssetForm = () => {
   const [showPreview, setShowPreview] = useState(false);
 
   const { departments, loading: departmentsLoading } = useSelector((state: RootState) => state.departments);
-  const { loading: assetLoading } = useSelector((state: RootState) => state.assets);
+  const { loading: assetLoading, actionLoading } = useSelector((state: RootState) => state.assets);
   const { user } = useSelector((state: RootState) => state.auth);
 
   const form = useForm({
@@ -217,6 +217,17 @@ const AssetForm = () => {
     return <div>Invalid asset type</div>;
   }
 
+  if (isEdit && actionLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading asset data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in space-y-6">
       <div className="flex items-center justify-between">
@@ -289,7 +300,7 @@ const AssetForm = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={actionLoading}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a department" />
@@ -333,7 +344,7 @@ const AssetForm = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subcategory</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={actionLoading}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a subcategory" />
@@ -470,7 +481,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Item Name *</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter item name" />
+                                <Input {...field} placeholder="Enter item name" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -487,6 +498,7 @@ const AssetForm = () => {
                                   type="number"
                                   min="1"
                                   {...field}
+                                  disabled={actionLoading}
                                   onChange={(e) => {
                                     const value = parseInt(e.target.value) || 0;
                                     field.onChange(value);
@@ -511,6 +523,7 @@ const AssetForm = () => {
                                   min="0"
                                   step="0.01"
                                   {...field}
+                                  disabled={actionLoading}
                                   onChange={(e) => {
                                     const value = parseFloat(e.target.value) || 0;
                                     field.onChange(value);
@@ -541,7 +554,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Vendor Name *</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter vendor name" />
+                                <Input {...field} placeholder="Enter vendor name" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -557,7 +570,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Vendor Address</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter vendor address" />
+                                <Input {...field} placeholder="Enter vendor address" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -570,7 +583,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Contact Number *</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="10-digit phone number" />
+                                <Input {...field} placeholder="10-digit phone number" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -586,7 +599,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Email *</FormLabel>
                               <FormControl>
-                                <Input type="email" {...field} placeholder="vendor@example.com" />
+                                <Input type="email" {...field} placeholder="vendor@example.com" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -599,7 +612,7 @@ const AssetForm = () => {
                             <FormItem>
                               <FormLabel>Bill Number *</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Enter bill number" />
+                                <Input {...field} placeholder="Enter bill number" disabled={actionLoading} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -718,7 +731,7 @@ const AssetForm = () => {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={assetLoading}
+                        disabled={assetLoading || actionLoading}
                         className="bg-primary hover:bg-primary-hover"
                       >
                         {assetLoading ? (isEdit ? 'Updating...' : 'Creating...') : (isEdit ? 'Update Asset' : 'Create Asset')}

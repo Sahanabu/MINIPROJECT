@@ -49,7 +49,16 @@ export const exportReport = createAsyncThunk(
       params: filters,
       responseType: 'blob',
     });
-    return { blob: response.data, format };
+    const blob = response.data;
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `asset-report.${format === 'excel' ? 'xlsx' : 'docx'}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return { success: true, format };
   }
 );
 
@@ -84,15 +93,7 @@ const reportsSlice = createSlice({
       })
       .addCase(exportReport.fulfilled, (state, action) => {
         state.loading = false;
-        const { blob, format } = action.payload;
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `asset-report.${format === 'excel' ? 'xlsx' : 'docx'}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        // File download handled in the thunk
       })
       .addCase(exportReport.rejected, (state, action) => {
         state.loading = false;

@@ -1,10 +1,18 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { AxiosError } from 'axios';
 import { api } from '../../services/api';
 
 export interface User {
   _id: string;
   name: string;
   email: string;
+  role: 'officer' | 'admin';
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
   role: 'officer' | 'admin';
 }
 
@@ -25,9 +33,14 @@ const initialState: AuthState = {
 // Async thunks
 export const register = createAsyncThunk(
   'auth/register',
-  async (userData: { name: string; email: string; password: string; role?: 'officer' | 'admin' }) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
+  async (userData: RegisterData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/register', userData);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error: string }>;
+      return rejectWithValue(axiosError.response?.data?.error || 'Registration failed');
+    }
   }
 );
 
@@ -61,12 +74,7 @@ const authSlice = createSlice({
         // For now, we'll assume the token is valid
       }
     },
-    setCredentials: (state, action: PayloadAction<{ user: User; token: string }>) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      localStorage.setItem('token', action.payload.token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${action.payload.token}`;
-    },
+
   },
   extraReducers: (builder) => {
     builder
@@ -83,7 +91,7 @@ const authSlice = createSlice({
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Registration failed';
+        state.error = (action.payload as string) || 'Registration failed';
       })
 
       // Login
@@ -104,5 +112,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, loadUserFromStorage, setCredentials } = authSlice.actions;
+export const { logout, clearError, loadUserFromStorage } = authSlice.actions;
 export default authSlice.reducer;

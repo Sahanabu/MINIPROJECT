@@ -54,12 +54,16 @@ export const listQuerySchema = Joi.object({
 });
 
 export const reportQuerySchema = Joi.object({
-	academicYear: Joi.string().pattern(/^\d{4}-\d{2}$/),
-	departmentId: Joi.string().length(24).hex(),
-	itemName: Joi.string(),
-	vendorName: Joi.string(),
-	groupBy: Joi.string().valid('department', 'item', 'vendor').required(),
-	format: Joi.string().valid('excel', 'word'),
+	academicYear: Joi.string()
+		.pattern(/^\d{4}(-\d{2})?$/)
+		.optional(),
+	departmentId: Joi.string()
+		.allow('all', '')
+		.optional(),
+	itemName: Joi.string().allow('').optional(),
+	vendorName: Joi.string().allow('').optional(),
+	groupBy: Joi.string().valid('department', 'item', 'vendor').default('department'),
+	format: Joi.string().valid('excel', 'word').optional(),
 });
 
 export const registerSchema = Joi.object({

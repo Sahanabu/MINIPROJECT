@@ -11,7 +11,8 @@ import {
   Download,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -43,11 +44,12 @@ const AssetsList = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const type = searchParams.get('type') as 'capital' | 'revenue' || 'capital';
   const navigate = useNavigate();
 
-  const { assets, loading, pagination, filters } = useSelector((state: RootState) => state.assets);
+  const { assets, loading, actionLoading, error, pagination, filters } = useSelector((state: RootState) => state.assets);
   const { departments } = useSelector((state: RootState) => state.departments);
 
   // Fetch data on mount and when filters change
@@ -61,6 +63,17 @@ const AssetsList = () => {
     }));
   }, [dispatch, type, pagination.page, pagination.limit, filters]);
 
+  // Show toast for fetch errors
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
+
   const handleFilterChange = (key: string, value: string) => {
     dispatch(setFilters({ [key]: value || undefined }));
     dispatch(setPagination({ page: 1 })); // Reset to first page when filtering
@@ -72,6 +85,7 @@ const AssetsList = () => {
 
   const handleDelete = async (assetId: string) => {
     if (window.confirm('Are you sure you want to delete this asset?')) {
+      setIsDeleting(assetId);
       try {
         await dispatch(deleteAsset(assetId)).unwrap();
         toast({
@@ -84,6 +98,8 @@ const AssetsList = () => {
           description: 'Failed to delete asset',
           variant: 'destructive',
         });
+      } finally {
+        setIsDeleting(null);
       }
     }
   };
@@ -377,9 +393,14 @@ const AssetsList = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(asset._id!)}
+                              disabled={isDeleting === asset._id || actionLoading}
                               className="text-destructive hover:text-destructive"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {isDeleting === asset._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </TableCell>

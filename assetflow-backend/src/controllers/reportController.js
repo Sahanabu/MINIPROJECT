@@ -1,3 +1,3 @@
-export { getReport, exportReport } from './reports.controller.js';
+export { generateReport, exportReport } from './reports.controller.js';
 
 

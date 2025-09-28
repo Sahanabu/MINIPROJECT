@@ -1,8 +1,11 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Building2, FileBarChart, Settings } from 'lucide-react';
+import { Building2, FileBarChart, Settings, LogOut } from 'lucide-react';
+import { RootState, AppDispatch } from '../store';
+import { logout } from '../store/slices/authSlice';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,6 +14,12 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const user = useSelector((state: RootState) => state.auth.user);
+  const dispatch = useDispatch<AppDispatch>();
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   return (
     <div className="min-h-screen bg-surface">
@@ -24,37 +33,45 @@ const Layout = ({ children }: LayoutProps) => {
                 Asset Tracker
               </span>
             </Link>
-            
+
             {!isHomePage && (
-              <nav className="flex items-center space-x-4">
-                <Link to="/">
-                  <Button variant="ghost" size="sm">
-                    Home
-                  </Button>
-                </Link>
-                <Link to="/assets?type=capital">
-                  <Button variant="ghost" size="sm">
-                    Capital Assets
-                  </Button>
-                </Link>
-                <Link to="/assets?type=revenue">
-                  <Button variant="ghost" size="sm">
-                    Revenue Assets
-                  </Button>
-                </Link>
-                <Link to="/reports">
-                  <Button variant="ghost" size="sm">
-                    <FileBarChart className="mr-2 h-4 w-4" />
-                    Reports
-                  </Button>
-                </Link>
-                <Link to="/admin">
-                  <Button variant="ghost" size="sm">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Admin
-                  </Button>
-                </Link>
-              </nav>
+              <div className="flex items-center space-x-4">
+                <nav className="flex items-center space-x-4">
+                  <Link to="/">
+                    <Button variant="ghost" size="sm">
+                      Home
+                    </Button>
+                  </Link>
+                  <Link to="/assets?type=capital">
+                    <Button variant="ghost" size="sm">
+                      Capital Assets
+                    </Button>
+                  </Link>
+                  <Link to="/assets?type=revenue">
+                    <Button variant="ghost" size="sm">
+                      Revenue Assets
+                    </Button>
+                  </Link>
+                  <Link to="/reports">
+                    <Button variant="ghost" size="sm">
+                      <FileBarChart className="mr-2 h-4 w-4" />
+                      Reports
+                    </Button>
+                  </Link>
+                  {user?.role === 'admin' && (
+                    <Link to="/admin">
+                      <Button variant="ghost" size="sm">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Admin
+                      </Button>
+                    </Link>
+                  )}
+                </nav>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
             )}
           </div>
         </div>

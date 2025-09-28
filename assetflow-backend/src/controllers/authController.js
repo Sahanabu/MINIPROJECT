@@ -5,9 +5,12 @@ import { registerSchema, loginSchema } from '../validation/schemas.js';
 
 export async function register(req, res, next) {
   try {
+    console.log('Register request body:', req.body);
+    console.log('JWT_SECRET:', process.env.JWT_SECRET);
     // Validate input
     const { error, value } = registerSchema.validate(req.body);
     if (error) {
+      console.log('Validation error:', error.details[0].message);
       return res.status(400).json({ error: error.details[0].message });
     }
 
@@ -36,26 +39,32 @@ export async function register(req, res, next) {
       user: userWithoutPassword
     });
   } catch (err) {
+    console.error('Register error:', err);
     next(err);
   }
 }
 
 export async function login(req, res, next) {
   try {
+    console.log('Login request body:', req.body);
+    console.log('JWT_SECRET:', process.env.JWT_SECRET);
     // Validate input
     const { error, value } = loginSchema.validate(req.body);
     if (error) {
+      console.log('Validation error:', error.details[0].message);
       return res.status(400).json({ error: error.details[0].message });
     }
 
     // Find user
     const user = await User.findOne({ email: value.email }).select('+password');
+    console.log('User found:', !!user);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Check password
     const isPasswordValid = await user.comparePassword(value.password);
+    console.log('Password valid:', isPasswordValid);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -76,29 +85,12 @@ export async function login(req, res, next) {
       user: userWithoutPassword
     });
   } catch (err) {
+    console.error('Login error:', err);
     next(err);
   }
 }
 
-export async function googleAuthCallback(req, res, next) {
-  try {
-    // User is attached to req by passport
-    const user = req.user;
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '30d' }
-    );
-
-    // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&success=true`);
-  } catch (err) {
-    next(err);
-  }
-}
 
 export async function getCurrentUser(req, res, next) {
   try {

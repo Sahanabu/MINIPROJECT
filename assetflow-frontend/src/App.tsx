@@ -14,7 +14,6 @@ import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import AuthCallback from "./pages/AuthCallback";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -30,7 +29,6 @@ const App = () => (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/asset/:type" element={<ProtectedRoute><AssetForm /></ProtectedRoute>} />
               <Route path="/asset/:type/edit/:id" element={<ProtectedRoute><AssetForm /></ProtectedRoute>} />

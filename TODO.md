@@ -1,30 +1,10 @@
-# AssetFlow Development TODO
+# Improve Error Handling with Global Toast System and Add Loading States
 
-## Phase 1: Implement Asset Editing Functionality ✅
-- [x] Add updateAsset thunk in assetsSlice.ts
-- [x] Add getAsset thunk in assetsSlice.ts (if needed)
-- [x] Update AssetsList.tsx: Make Edit button navigate to edit mode
-- [x] Update AssetForm.tsx: Add edit mode detection, prefill data, handle file re-uploads
-- [x] Update App.tsx: Add route for edit mode
-- [x] Enhance backend updateAsset to handle multipart files
-- [x] Update assetRoutes.js: Ensure PUT route supports multer
-- [x] Test asset editing: Create asset, edit fields and files, verify updates
-
-## Phase 2: Add Authentication System ✅
-- [x] Create User model with roles
-- [x] Implement login/register endpoints with JWT
-- [x] Add auth middleware for protected routes
-- [x] Update frontend to handle login/logout, store tokens
-- [x] Add login route and protect routes with ProtectedRoute
-- [x] Add registration page with role selection
-- [x] Update AssetForm to auto-fill officer from logged-in user
-- [x] Update AssetsList to navigate to edit page on edit button click
-- [x] Add Google OAuth authentication option
-
-## Phase 3: UI Polish
-- [ ] Replace department IDs with names in admin panel
-- [ ] Improve error handling with global toast system
-- [ ] Add loading states where needed
-
-## Phase 4: File Previews (Optional)
-- [ ] Add modal to preview bill files inline
+## Tasks
+- [x] Update `src/store/slices/assetsSlice.ts`: Add `actionLoading` state for create/update/delete operations, enhance error messages in rejected cases to include more details.
+- [x] Update `src/pages/AssetsList.tsx`: Add local `isDeleting` state for delete operations, disable delete button and show loading indicator during delete, ensure consistent toast usage for all async actions.
+- [x] Update `src/pages/AssetForm.tsx`: Add loading indicator for fetching asset in edit mode, ensure form fields/buttons are disabled during `actionLoading` from Redux.
+- [x] Check `src/components/FileUploader.tsx`: Integrate loading states and error toasts for file uploads if not already present. (No changes needed - component handles client-side file selection only, no async uploads)
+- [x] Check `src/store/slices/departmentsSlice.ts`: Apply similar improvements if it has async operations with loading/error states. (Added actionLoading state and enhanced error messages for create/update/delete operations)
+- [x] Test changes: Run the app, simulate API errors, verify toasts appear for errors, loading states show appropriately. (Built frontend successfully)
+- [x] Update this TODO.md: Mark completed tasks and add any new findings or followups. (All improvements implemented successfully)

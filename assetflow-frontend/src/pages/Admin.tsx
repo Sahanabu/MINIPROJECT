@@ -14,6 +14,10 @@ const Admin = () => {
   const [revenue, setRevenue] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
 
+  const getDepartmentName = (departmentId: string) => {
+    return departments.find(d => d._id === departmentId)?.name || 'Unknown';
+  };
+
   const [openDeptDialog, setOpenDeptDialog] = useState(false);
   const [editingDept, setEditingDept] = useState<any | null>(null);
   const [deptForm, setDeptForm] = useState<{ name: string; type: 'major' | 'academic' | 'service' }>({ name: '', type: 'major' });
@@ -190,7 +194,7 @@ const Admin = () => {
                   {capital.map((a) => (
                     <TableRow key={a._id}>
                       <TableCell>{a.items?.[0]?.itemName}{a.items?.length > 1 ? ` +${a.items.length - 1}` : ''}</TableCell>
-                      <TableCell>{a.departmentId}</TableCell>
+                      <TableCell>{getDepartmentName(a.departmentId)}</TableCell>
                       <TableCell>{a.subcategory}</TableCell>
                       <TableCell>₹{a.grandTotal?.toLocaleString?.() || a.grandTotal}</TableCell>
                       <TableCell className="text-right">
@@ -224,7 +228,7 @@ const Admin = () => {
                   {revenue.map((a) => (
                     <TableRow key={a._id}>
                       <TableCell>{a.items?.[0]?.itemName}{a.items?.length > 1 ? ` +${a.items.length - 1}` : ''}</TableCell>
-                      <TableCell>{a.departmentId}</TableCell>
+                      <TableCell>{getDepartmentName(a.departmentId)}</TableCell>
                       <TableCell>{a.subcategory}</TableCell>
                       <TableCell>₹{a.grandTotal?.toLocaleString?.() || a.grandTotal}</TableCell>
                       <TableCell className="text-right">

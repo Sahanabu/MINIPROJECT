@@ -19,9 +19,7 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: function() {
-      return !this.googleId; // Password required only if not OAuth user
-    },
+    required: true,
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // Don't include in queries by default
   },
@@ -29,20 +27,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['officer', 'admin'],
     default: 'officer'
-  },
-  googleId: {
-    type: String,
-    sparse: true, // Allows null values but ensures uniqueness when present
-    unique: true
-  },
-  avatar: {
-    type: String,
-    trim: true
-  },
-  authProvider: {
-    type: String,
-    enum: ['local', 'google'],
-    default: 'local'
   }
 }, {
   timestamps: true

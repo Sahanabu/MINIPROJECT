@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { api } from '../../services/api';
+import { AxiosError } from 'axios';
+import { api } from '../../services/api'; // Assuming this is your configured Axios instance
+
+// ====================================================================
+// INTERFACES (UNCHANGED)
+// ====================================================================
 
 export interface AssetItem {
   itemName: string;
@@ -36,6 +41,7 @@ export interface Asset {
 interface AssetsState {
   assets: Asset[];
   loading: boolean;
+  actionLoading: boolean;
   error: string | null;
   pagination: {
     page: number;
@@ -52,9 +58,30 @@ interface AssetsState {
   };
 }
 
+// ====================================================================
+// API RESPONSE INTERFACES (NEW FOR TYPE SAFETY)
+// ====================================================================
+
+interface FetchAssetsResponse {
+  data: Asset[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface SingleAssetResponse {
+  data: Asset;
+}
+
+// ====================================================================
+// INITIAL STATE (UNCHANGED)
+// ====================================================================
+
 const initialState: AssetsState = {
   assets: [],
   loading: false,
+  actionLoading: false,
   error: null,
   pagination: {
     page: 1,
@@ -65,10 +92,13 @@ const initialState: AssetsState = {
   filters: {},
 };
 
-// Async thunks
-export const fetchAssets = createAsyncThunk(
-  'assets/fetchAssets',
-  async (params: {
+// ====================================================================
+// ASYNC THUNKS (UPDATED WITH RETURN TYPES)
+// ====================================================================
+
+export const fetchAssets = createAsyncThunk<
+  FetchAssetsResponse, // Success return type
+  { // Params type
     type?: 'capital' | 'revenue';
     page?: number;
     limit?: number;
@@ -76,15 +106,21 @@ export const fetchAssets = createAsyncThunk(
     subcategory?: string;
     vendorName?: string;
     academicYear?: string;
-  }) => {
+  }
+>(
+  'assets/fetchAssets',
+  async (params) => {
     const response = await api.get('/assets', { params });
     return response.data;
   }
 );
 
-export const createAsset = createAsyncThunk(
+export const createAsset = createAsyncThunk<
+  SingleAssetResponse, // Success return type (API should return the created asset)
+  Asset // Argument type
+>(
   'assets/createAsset',
-  async (assetData: Asset) => {
+  async (assetData) => {
     const formData = new FormData();
 
     // Build clean payload without File objects and with normalized dates
@@ -101,8 +137,8 @@ export const createAsset = createAsyncThunk(
         totalAmount: item.totalAmount,
         vendorName: item.vendorName,
         vendorAddress: item.vendorAddress || '',
-        contactNumber: item.contactNumber || '',
-        email: item.email || '',
+        contactNumber: item.contactNumber, // Removed unnecessary || '' as type requires it
+        email: item.email, // Removed unnecessary || '' as type requires it
         billNo: item.billNo || '',
         billDate: item.billDate ? new Date(item.billDate).toISOString() : undefined,
         billFileUrl: item.billFileUrl || '',
@@ -128,17 +164,23 @@ export const createAsset = createAsyncThunk(
   }
 );
 
-export const getAsset = createAsyncThunk(
+export const getAsset = createAsyncThunk<
+  SingleAssetResponse, // Success return type (assuming you want to type the response)
+  string // Argument type (id)
+>(
   'assets/getAsset',
-  async (id: string) => {
+  async (id) => {
     const response = await api.get(`/assets/${id}`);
     return response.data;
   }
 );
 
-export const updateAsset = createAsyncThunk(
+export const updateAsset = createAsyncThunk<
+  SingleAssetResponse, // Success return type (API should return the updated asset)
+  { id: string; assetData: Partial<Asset> } // Argument type
+>(
   'assets/updateAsset',
-  async ({ id, assetData }: { id: string; assetData: Partial<Asset> }) => {
+  async ({ id, assetData }) => {
     const formData = new FormData();
 
     // Build clean payload without File objects and with normalized dates
@@ -182,13 +224,17 @@ export const updateAsset = createAsyncThunk(
   }
 );
 
-export const deleteAsset = createAsyncThunk(
+export const deleteAsset = createAsyncThunk<string, string>(
   'assets/deleteAsset',
-  async (id: string) => {
+  async (id) => {
     await api.delete(`/assets/${id}`);
     return id;
   }
 );
+
+// ====================================================================
+// SLICE AND REDUCERS (UPDATED)
+// ====================================================================
 
 const assetsSlice = createSlice({
   name: 'assets',
@@ -206,13 +252,14 @@ const assetsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch assets
+      // ---------------- Fetch assets ----------------
       .addCase(fetchAssets.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAssets.fulfilled, (state, action) => {
         state.loading = false;
+        // action.payload is now type-safe as FetchAssetsResponse
         state.assets = action.payload.data;
         state.pagination = {
           page: action.payload.page,
@@ -223,33 +270,74 @@ const assetsSlice = createSlice({
       })
       .addCase(fetchAssets.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch assets';
+        const err = action.error as AxiosError<{ message?: string }>;
+        state.error = err.response?.data?.message || err.message || 'Failed to fetch assets';
       })
-      
-      // Create asset
+
+      // ---------------- Create asset ----------------
       .addCase(createAsset.pending, (state) => {
-        state.loading = true;
+        state.actionLoading = true;
         state.error = null;
       })
-      .addCase(createAsset.fulfilled, (state) => {
-        state.loading = false;
+      .addCase(createAsset.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        // **FIX:** Add the newly created asset to the state
+        state.assets.unshift(action.payload.data); 
       })
       .addCase(createAsset.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message || 'Failed to create asset';
+        state.actionLoading = false;
+        const err = action.error as AxiosError<{ message?: string }>;
+        state.error = err.response?.data?.message || err.message || 'Failed to create asset';
       })
-      
-      // Update asset
+
+      // ---------------- Update asset ----------------
+      .addCase(updateAsset.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(updateAsset.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        // action.payload.data is now type-safe as Asset
         const index = state.assets.findIndex(asset => asset._id === action.payload.data._id);
         if (index !== -1) {
           state.assets[index] = action.payload.data;
         }
       })
-      
-      // Delete asset
+      .addCase(updateAsset.rejected, (state, action) => {
+        state.actionLoading = false;
+        const err = action.error as AxiosError<{ message?: string }>;
+        state.error = err.response?.data?.message || err.message || 'Failed to update asset';
+      })
+
+      // ---------------- Delete asset ----------------
+      .addCase(deleteAsset.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(deleteAsset.fulfilled, (state, action) => {
+        state.actionLoading = false;
         state.assets = state.assets.filter(asset => asset._id !== action.payload);
+      })
+      .addCase(deleteAsset.rejected, (state, action) => {
+        state.actionLoading = false;
+        const err = action.error as AxiosError<{ message?: string }>;
+        state.error = err.response?.data?.message || err.message || 'Failed to delete asset';
+      })
+
+      // ---------------- Get asset ----------------
+      .addCase(getAsset.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(getAsset.fulfilled, (state) => {
+        // NOTE: This reducer doesn't store the fetched asset in the global state, 
+        // which is fine if you handle it locally (e.g., in a component).
+        state.actionLoading = false; 
+      })
+      .addCase(getAsset.rejected, (state, action) => {
+        state.actionLoading = false;
+        const err = action.error as AxiosError<{ message?: string }>;
+        state.error = err.response?.data?.message || err.message || 'Failed to fetch asset';
       });
   },
 });
